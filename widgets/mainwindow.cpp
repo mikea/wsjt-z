@@ -9283,6 +9283,7 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
   // Z
   const auto nowUtc = QDateTime::currentDateTimeUtc();
   updateQsoCounter(true);
+  m_preserveAutoCallCountAfterQso = ui->cbAutoCall->isChecked ();
   m_dxMapLastLogUtc = nowUtc;
   if (m_dxStationMap) {
     m_dxStationMap->setTickerStats(qso_total, qso_new, m_dxMapStartedUtc, m_dxMapLastLogUtc, 0.0);
@@ -14141,6 +14142,9 @@ void MainWindow::sfox_tx() {
 
 void MainWindow::on_cbAutoCall_toggled(bool b)
 {
+    if (!b) {
+        m_preserveAutoCallCountAfterQso = false;
+    }
     if (b) {
         ui->cb_autoCallNext->setChecked(false);
         ui->cbCQonly->setChecked(true);
@@ -15726,12 +15730,16 @@ void MainWindow::ZProcess ()
         if (ui->cbAutoCall->isChecked() || ui->cbAutoCQ->isChecked()) {
 
                 if (ui->cbAutoCall->isChecked()) {
-                    int l = ui->le_autoCallLeft->text().toInt();
-                    if (l > 1){
-                        ui->le_autoCallLeft->setText(QString::number(l-1));
+                    if (m_preserveAutoCallCountAfterQso) {
+                        m_preserveAutoCallCountAfterQso = false;
+                        if (m_zdebug) log("ZProcess: Preserving AutoCall count after logged QSO");
                     } else {
-                        resetAutoSwitch();
-                        if (ui->cb_autoModeSwitch->isChecked()) {
+                        int l = ui->le_autoCallLeft->text().toInt();
+                        if (l > 1){
+                            ui->le_autoCallLeft->setText(QString::number(l-1));
+                        } else {
+                            resetAutoSwitch();
+                            if (ui->cb_autoModeSwitch->isChecked()) {
                             m_autoModeSwitch = true;
                             ui->cbAutoCall->setChecked(false);
                             ui->cbAutoCQ->setChecked(true);
@@ -15772,6 +15780,7 @@ void MainWindow::ZProcess ()
                             tx_watchdog(false);
                         } else {
                             toggleBands();
+                            }
                         }
                     }
                 } else if (ui->cbAutoCQ->isChecked()) {
