@@ -121,6 +121,14 @@ public:
   bool psk_reporter_band_activity () const;
   bool psk_reporter_enabled () const;
   bool psk_reporter_tcpip () const;
+  // Whether accepted QSOs should be uploaded to Cloudlog or Wavelog.
+  bool cloudlog_enabled () const;
+  // Deployment root used to construct the compatible logging API endpoints.
+  QString cloudlog_api_url () const;
+  // Credential sent to the logging API; persisted with the other settings.
+  QString cloudlog_api_key () const;
+  // Server-side station profile associated with uploaded QSOs.
+  qint32 cloudlog_api_station_id () const;
   bool monitor_off_at_startup () const;
   bool monitor_last_used () const;
   bool log_as_RTTY () const;

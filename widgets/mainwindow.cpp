@@ -329,6 +329,7 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
   ui(new Ui::MainWindow),
   m_config {&m_network_manager, temp_directory, m_settings, &m_logBook, this},
   m_logBook {&m_config},
+  m_cloudlog {&m_config, this},
   m_WSPR_band_hopping {m_settings, &m_config, this},
   m_WSPR_tx_next {false},
   m_rigErrorMessageBox {MessageBox::Critical, tr ("Rig Control Error")
@@ -515,6 +516,11 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
   m_block_udp_status_updates {false}
 {
   ui->setupUi(this);
+
+  // Upload failures must be visible without coupling the network module to UI.
+  connect (&m_cloudlog, &Cloudlog::upload_failed, this, [this] (QString const& reason) {
+      MessageBox::warning_message (this, tr ("Cloudlog/Wavelog upload failed"), reason);
+    });
 
   // Keep both decoder panes usable on platforms with larger native controls,
   // and reserve additional vertical space for the decoder area.
@@ -9298,6 +9304,12 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
         }
     }
 
+  // Cloudlog and Wavelog share this API and accept the same ADIF payload.
+  if (m_config.cloudlog_enabled ())
+    {
+      m_cloudlog.log_qso (ADIF);
+    }
+
   if(m_config.clear_DX () and SpecOp::HOUND != m_specOp) clearDX ();
   m_dateTimeQSOOn = QDateTime {};
   if(m_specOp!=SpecOp::NONE and m_specOp!=SpecOp::FOX and m_specOp!=SpecOp::HOUND) {
@@ -16174,5 +16186,4 @@ void MainWindow::execCmd(QString cmd) {
     cmd.remove(0, cmd.indexOf(" ")+1);
     QProcess::startDetached(program, QStringList() << cmd);
 }
-
 

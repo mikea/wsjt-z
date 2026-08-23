@@ -3550,6 +3550,108 @@ Right click for insert and delete options.</string>
         </widget>
        </item>
        <item row="3" column="0" colspan="2">
+        <widget class="QGroupBox" name="gbCloudlog">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Upload logged QSOs to a Cloudlog or Wavelog instance.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="title">
+          <string>Upload QSOs to Cloudlog or Wavelog</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+         <layout class="QFormLayout" name="cloudlog_form_layout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="cloudlog_api_url_label">
+            <property name="text">
+             <string>API URL:</string>
+            </property>
+            <property name="buddy">
+             <cstring>leCloudlogApiUrl</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="leCloudlogApiUrl">
+            <property name="toolTip">
+             <string>Cloudlog or Wavelog deployment URL; the QSO API path is also accepted.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="cloudlog_api_key_label">
+            <property name="text">
+             <string>API Key:</string>
+            </property>
+            <property name="buddy">
+             <cstring>leCloudlogApiKey</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="leCloudlogApiKey">
+            <property name="toolTip">
+             <string>API key created by your Cloudlog or Wavelog instance.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="cloudlog_station_id_label">
+            <property name="text">
+             <string>Station ID:</string>
+            </property>
+            <property name="buddy">
+             <cstring>sbCloudlogStationID</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <layout class="QHBoxLayout" name="cloudlog_actions_layout">
+            <item>
+             <widget class="QSpinBox" name="sbCloudlogStationID">
+              <property name="toolTip">
+               <string>Station profile ID that owns uploaded QSOs.</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>999999</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="cloudlog_horizontal_spacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pbTestCloudlog">
+              <property name="toolTip">
+               <string>Test the Cloudlog or Wavelog API key. Green is writable, orange is read-only, and red indicates a failed test.</string>
+              </property>
+              <property name="text">
+               <string>Test API Key</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
         <spacer name="verticalSpacer_8">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

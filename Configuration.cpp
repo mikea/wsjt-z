@@ -198,6 +198,7 @@
 #include "validators/MaidenheadLocatorValidator.hpp"
 #include "validators/CallsignValidator.hpp"
 #include "Network/LotWUsers.hpp"
+#include "Network/Cloudlog.hpp"
 #include "models/DecodeHighlightingModel.hpp"
 #include "logbook/logbook.h"
 #include "widgets/LazyFillComboBox.hpp"
@@ -575,6 +576,10 @@ private:
   Q_SLOT void on_split_mode_button_group_buttonClicked (int);
   Q_SLOT void on_test_CAT_push_button_clicked ();
   Q_SLOT void on_test_PTT_push_button_clicked (bool checked);
+  // Tests the values currently visible in the Cloudlog/Wavelog editor.
+  Q_SLOT void on_pbTestCloudlog_clicked ();
+  // Clears stale test feedback when upload enablement changes.
+  Q_SLOT void on_gbCloudlog_clicked ();
   Q_SLOT void on_force_DTR_combo_box_currentIndexChanged (int);
   Q_SLOT void on_force_RTS_combo_box_currentIndexChanged (int);
   Q_SLOT void on_rig_combo_box_currentIndexChanged (int);
@@ -665,6 +670,7 @@ private:
   QFont next_decoded_text_font_;
 
   LotWUsers lotw_users_;
+  Cloudlog cloudlog_;
 
   bool restart_sound_input_device_;
   bool restart_sound_output_device_;
@@ -747,6 +753,10 @@ private:
   bool id_after_73_;
   bool tx_QSY_allowed_;
   bool spot_to_psk_reporter_;
+  QString cloudLogApiUrl_;
+  QString cloudLogApiKey_;
+  qint32 cloudLogStationID_;
+  bool bCloudLog_;
   bool psk_reporter_band_activity_;
   bool psk_reporter_tcpip_;
   bool decoded_text_psk_highlight_;
@@ -920,6 +930,10 @@ bool Configuration::psk_reporter_enabled () const
   return m_->spot_to_psk_reporter_;
 }
 bool Configuration::psk_reporter_tcpip () const {return m_->psk_reporter_tcpip_;}
+bool Configuration::cloudlog_enabled () const {return m_->bCloudLog_;}
+QString Configuration::cloudlog_api_url () const {return m_->cloudLogApiUrl_;}
+QString Configuration::cloudlog_api_key () const {return m_->cloudLogApiKey_;}
+qint32 Configuration::cloudlog_api_station_id () const {return m_->cloudLogStationID_;}
 bool Configuration::monitor_off_at_startup () const {return m_->monitor_off_at_startup_;}
 bool Configuration::monitor_last_used () const {return m_->rig_is_dummy_ || m_->monitor_last_used_;}
 bool Configuration::log_as_RTTY () const {return m_->log_as_RTTY_;}
@@ -1400,6 +1414,7 @@ Configuration::impl::impl (Configuration * self, QNetworkAccessManager * network
   , temp_dir_ {temp_directory}
   , writeable_data_dir_ {QStandardPaths::writableLocation (QStandardPaths::DataLocation)}
   , lotw_users_ {network_manager_}
+  , cloudlog_ {self}
   , restart_sound_input_device_ {false}
   , restart_sound_output_device_ {false}
   , restart_tci_device_ {false}
@@ -1516,6 +1531,20 @@ Configuration::impl::impl (Configuration * self, QNetworkAccessManager * network
   });
 
   lotw_users_.set_local_file_path (writeable_data_dir_.absoluteFilePath ("lotw-user-activity.csv"));
+
+  // Reflect asynchronous credential-test results directly on the test button.
+  connect (&cloudlog_, &Cloudlog::api_key_writable, [this] () {
+      ui_->pbTestCloudlog->setStyleSheet ("QPushButton {background-color: green;}");
+      ui_->pbTestCloudlog->setToolTip (tr ("API key is writable"));
+    });
+  connect (&cloudlog_, &Cloudlog::api_key_read_only, [this] () {
+      ui_->pbTestCloudlog->setStyleSheet ("QPushButton {background-color: orange;}");
+      ui_->pbTestCloudlog->setToolTip (tr ("API key is read-only"));
+    });
+  connect (&cloudlog_, &Cloudlog::api_key_invalid, [this] () {
+      ui_->pbTestCloudlog->setStyleSheet ("QPushButton {background-color: red;}");
+      ui_->pbTestCloudlog->setToolTip (tr ("API key or URL is invalid"));
+    });
 
   //
   // validation
@@ -1753,6 +1782,11 @@ void Configuration::impl::initialize_models ()
   connect (ui_->psk_reporter_check_box, &QCheckBox::toggled,
            ui_->psk_reporter_band_activity_check_box, &QWidget::setEnabled);
   ui_->psk_reporter_tcpip_check_box->setChecked (psk_reporter_tcpip_);
+  ui_->gbCloudlog->setChecked (bCloudLog_);
+  ui_->leCloudlogApiUrl->setText (cloudLogApiUrl_);
+  ui_->leCloudlogApiKey->setText (cloudLogApiKey_);
+  ui_->sbCloudlogStationID->setValue (cloudLogStationID_);
+  ui_->pbTestCloudlog->setStyleSheet ({});
   ui_->monitor_off_check_box->setChecked (monitor_off_at_startup_);
   ui_->monitor_last_used_check_box->setChecked (monitor_last_used_);
   ui_->log_as_RTTY_check_box->setChecked (log_as_RTTY_);
@@ -1991,6 +2025,10 @@ void Configuration::impl::read_settings ()
   spot_to_psk_reporter_ = settings_->value ("PSKReporter", false).toBool ();
   psk_reporter_band_activity_ = settings_->value ("PSKReporterBandActivity", false).toBool ();
   psk_reporter_tcpip_ = settings_->value ("PSKReporterTCPIP", false).toBool ();
+  bCloudLog_ = settings_->value ("CloudLog", false).toBool ();
+  cloudLogApiUrl_ = settings_->value ("CloudLogApiUrl", QString {}).toString ();
+  cloudLogApiKey_ = settings_->value ("CloudLogApiKey", QString {}).toString ();
+  cloudLogStationID_ = settings_->value ("CloudLogStationID", 1).toInt ();
   id_after_73_ = settings_->value ("After73", false).toBool ();
   tx_QSY_allowed_ = settings_->value ("TxQSYAllowed", false).toBool ();
   use_dynamic_grid_ = settings_->value ("AutoGrid", false).toBool ();
@@ -2270,6 +2308,10 @@ void Configuration::impl::write_settings ()
   settings_->setValue ("PSKReporter", spot_to_psk_reporter_);
   settings_->setValue ("PSKReporterBandActivity", psk_reporter_band_activity_);
   settings_->setValue ("PSKReporterTCPIP", psk_reporter_tcpip_);
+  settings_->setValue ("CloudLog", bCloudLog_);
+  settings_->setValue ("CloudLogApiUrl", cloudLogApiUrl_);
+  settings_->setValue ("CloudLogApiKey", cloudLogApiKey_);
+  settings_->setValue ("CloudLogStationID", cloudLogStationID_);
   settings_->setValue ("DecodedTextHighlightUnderline", decoded_text_psk_highlight_);
   settings_->setValue ("After73", id_after_73_);
   settings_->setValue ("TxQSYAllowed", tx_QSY_allowed_);
@@ -2795,6 +2837,10 @@ void Configuration::impl::accept ()
   spot_to_psk_reporter_ = ui_->psk_reporter_check_box->isChecked ();
   psk_reporter_band_activity_ = ui_->psk_reporter_band_activity_check_box->isChecked ();
   psk_reporter_tcpip_ = ui_->psk_reporter_tcpip_check_box->isChecked ();
+  bCloudLog_ = ui_->gbCloudlog->isChecked ();
+  cloudLogApiUrl_ = ui_->leCloudlogApiUrl->text ().trimmed ();
+  cloudLogApiKey_ = ui_->leCloudlogApiKey->text ().trimmed ();
+  cloudLogStationID_ = ui_->sbCloudlogStationID->value ();
   id_interval_ = ui_->CW_id_interval_spin_box->value ();
   ntrials_ = ui_->sbNtrials->value ();
   txDelay_ = ui_->sbTxDelay->value ();
@@ -3258,6 +3304,19 @@ void Configuration::impl::on_test_PTT_push_button_clicked (bool checked)
     {
       Q_EMIT self_->transceiver_ptt (checked);
     }
+}
+
+// Starts a non-blocking credential test without publishing unaccepted settings.
+void Configuration::impl::on_pbTestCloudlog_clicked ()
+{
+  ui_->pbTestCloudlog->setStyleSheet ({});
+  cloudlog_.test_api (ui_->leCloudlogApiUrl->text (), ui_->leCloudlogApiKey->text ());
+}
+
+// Removes a prior result because toggling the group changes the effective state.
+void Configuration::impl::on_gbCloudlog_clicked ()
+{
+  ui_->pbTestCloudlog->setStyleSheet ({});
 }
 
 void Configuration::impl::on_force_DTR_combo_box_currentIndexChanged (int /* index */)

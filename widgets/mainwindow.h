@@ -41,6 +41,7 @@
 #include "Transceiver/Transceiver.hpp"
 #include "DisplayManual.hpp"
 #include "Network/PSKReporter.hpp"
+#include "Network/Cloudlog.hpp"
 #include "UDPExamples/MessageServer.hpp"
 #include "logbook/logbook.h"
 #include "astro.h"
@@ -563,6 +564,7 @@ private:
 
   Configuration m_config;
   LogBook m_logBook;            // must be after Configuration construction
+  Cloudlog m_cloudlog;
   WSPRBandHopping m_WSPR_band_hopping;
   bool m_WSPR_tx_next;
   MessageBox m_rigErrorMessageBox;

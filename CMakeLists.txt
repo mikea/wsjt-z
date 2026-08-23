@@ -272,6 +272,7 @@ set (wsjtx_CXXSRCS
   WSJTXLogging.cpp
   logbook/logbook.cpp
   Network/PSKReporter.cpp
+  Network/Cloudlog.cpp
   Modulator/Modulator.cpp
   Detector/Detector.cpp
   widgets/logqso.cpp
