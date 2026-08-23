@@ -328,6 +328,7 @@ MainWindow::MainWindow(QDir const& temp_directory, bool multiple,
   m_settings {multi_settings->settings ()},
   ui(new Ui::MainWindow),
   m_config {&m_network_manager, temp_directory, m_settings, &m_logBook, this},
+  m_call3_database {m_config.writeable_data_dir ()},
   m_logBook {&m_config},
   m_cloudlog {&m_config, this},
   m_WSPR_band_hopping {m_settings, &m_config, this},
@@ -7187,7 +7188,9 @@ void MainWindow::guiUpdate()
     }
 
     if(m_mode=="FST4") chk_FST4_freq_range();
-    m_currentBand=m_config.bands()->find(m_freqNominal);
+    auto const currentBand = m_config.bands()->find(m_freqNominal);
+    if (currentBand != m_currentBand) m_grid_locator_cache.clear ();
+    m_currentBand=currentBand;
     // Z
     /*
     if( SpecOp::HOUND == m_specOp ) {
@@ -8770,37 +8773,25 @@ void MainWindow::lookup()
   QString hisCall {ui->dxCallEntry->text()};
   QString hisgrid0 {ui->dxGridEntry->text()};
   if (!hisCall.size ()) return;
-  QFile f {m_config.writeable_data_dir ().absoluteFilePath ("CALL3.TXT")};
-  if (f.open (QIODevice::ReadOnly | QIODevice::Text))
-    {
-      char c[132];
-      qint64 n=0;
-      for(int i=0; i<999999; i++) {
-        n=f.readLine(c,sizeof(c));
-        if(n <= 0) {
-          if(!hisgrid0.contains(grid_regexp)) {
-            ui->dxGridEntry->clear();
-          }
-          break;
-        }
-        QString t=QString(c);
-        int i1=t.indexOf(",");
-        if(t.left(i1)==hisCall) {
-          QString hisgrid=t.mid(i1+1,6);
-          i1=hisgrid.indexOf(",");
-          if(i1>0) {
-            hisgrid=hisgrid.mid(0,4);
-          } else {
-            hisgrid=hisgrid.mid(0,6).toUpper();
-          }
-          if(hisgrid.left(4)==hisgrid0.left(4) or (hisgrid0.size()==0)) {
-            ui->dxGridEntry->setText(hisgrid);
-          }
-          break;
-        }
-      }
-      f.close();
-    }
+  auto const hisgrid = resolvedGrid (hisCall, hisgrid0);
+  if (hisgrid.isEmpty ()) {
+    if (!hisgrid0.contains (grid_regexp)) ui->dxGridEntry->clear ();
+    return;
+  }
+  ui->dxGridEntry->setText (hisgrid);
+}
+
+QString MainWindow::resolvedGrid(QString const& call, QString const& candidateGrid)
+{
+  auto otherGrid = grid_regexp.match(candidateGrid).hasMatch()
+    ? candidateGrid.trimmed().toUpper() : QString {};
+  auto const call3Grid = m_call3_database.grid_for_call(call);
+  if (otherGrid.isEmpty()
+      || (call3Grid.startsWith(otherGrid.left(4))
+          && call3Grid.length() > otherGrid.length())) {
+    otherGrid = call3Grid;
+  }
+  return m_grid_locator_cache.resolve(call, otherGrid);
 }
 
 void MainWindow::on_lookupButton_clicked()                    //Lookup button
@@ -10741,6 +10732,7 @@ void MainWindow::on_bandComboBox_activated (int index)
       frequency = frequencies->frequency_list ()[source_index.row ()].frequency_;
     }
   m_bandEdited = true;
+  m_grid_locator_cache.clear ();
   band_changed (frequency);
   m_wideGraph->setRxBand (m_config.bands ()->find (frequency));
 //  m_specOp=m_config.special_op_id();
@@ -14306,6 +14298,12 @@ bool MainWindow::callsignFiltered(DecodedText dt)
 
     bool is_73 = (message_words.size() >= 5 && (message_words.contains("73") || message_words.contains("RR73")));
     bool is_CQ = message_words.filter (kReCqStart).size();
+    if (is_CQ && grid_regexp.match(dxGrid).hasMatch()) {
+        m_grid_locator_cache.remember(dxCall, dxGrid);
+    }
+    if (is_73) {
+        dxGrid = resolvedGrid(dxCall, dxGrid);
+    }
 
     // Auto call next
     if (ui->cb_autoCallNext->isChecked() && dxCall == ui->dxCallEntry->text() ) {
@@ -14332,6 +14330,16 @@ bool MainWindow::callsignFiltered(DecodedText dt)
     }
 
     if (!ui->cb_filtering->isChecked()) return false;
+
+    // A 73 does not normally carry a locator. Grid-newness filtering can only
+    // make a meaningful decision when a prior CQ or CALL3 resolves its grid.
+    bool const grid_filter_enabled = ui->cb_gridB4->isChecked()
+      || ui->cb_gridB4onBand->isChecked();
+    if (is_73 && ui->cbCQonlyIncl73->isChecked() && grid_filter_enabled
+        && dxGrid.isEmpty()) {
+        if (m_zdebug) log("callsignFiltered: 73 has no resolvable grid. Skipping.");
+        return true;
+    }
 
     // LOTW only filter
     if ( ui->cb_f_LOTW->isChecked() && !m_config.lotw_users ().user (dxCall)) {
@@ -15078,6 +15086,12 @@ void MainWindow::dxLookup(QString dxCall, QString dxGrid) {
         }
     }
 
+    dxGrid = resolvedGrid(dxCall, dxGrid);
+    if (0 == dxCall.compare(ui->dxCallEntry->text(), Qt::CaseInsensitive)
+        && grid_regexp.match(dxGrid).hasMatch()) {
+        ui->dxGridEntry->setText(dxGrid);
+    }
+
     ui->ci_dxcall->setText(dxCall);
     qrzLookup(dxCall);
     auto const& looked_up = m_logBook.countries ()->lookup (dxCall);
@@ -15111,7 +15125,7 @@ void MainWindow::dxLookup(QString dxCall, QString dxGrid) {
     if (!ITUZoneB4) ui->ci_ituzone->setFont(bold);
     if (!callB4) ui->ci_dxcall->setFont(bold);
 
-    if (dxGrid.length() != 4 || dxGrid == "RR73" || dxGrid.startsWith("R-") || dxGrid.startsWith("R+")) return;
+    if (!grid_regexp.match(dxGrid).hasMatch()) return;
 
     ui->ci_grid->setText(dxGrid);
 
@@ -16187,4 +16201,3 @@ void MainWindow::execCmd(QString cmd) {
     cmd.remove(0, cmd.indexOf(" ")+1);
     QProcess::startDetached(program, QStringList() << cmd);
 }
-

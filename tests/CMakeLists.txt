@@ -21,3 +21,11 @@ include_directories (${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR})
 add_executable (test_qt_helpers test_qt_helpers.cpp)
 target_link_libraries (test_qt_helpers wsjt_qt Qt5::Test)
 add_test (test_qt_helpers test_qt_helpers)
+
+add_executable (test_call3_database
+  test_call3_database.cpp
+  ../logbook/Call3Database.cpp
+  ../logbook/GridLocatorCache.cpp
+  )
+target_link_libraries (test_call3_database Qt5::Core Qt5::Test)
+add_test (test_call3_database test_call3_database)

@@ -271,6 +271,8 @@ set (jt9_FSRCS
 
 set (wsjtx_CXXSRCS
   WSJTXLogging.cpp
+  logbook/Call3Database.cpp
+  logbook/GridLocatorCache.cpp
   logbook/logbook.cpp
   Network/PSKReporter.cpp
   Network/Cloudlog.cpp

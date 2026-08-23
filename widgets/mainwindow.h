@@ -43,6 +43,8 @@
 #include "Network/PSKReporter.hpp"
 #include "Network/Cloudlog.hpp"
 #include "UDPExamples/MessageServer.hpp"
+#include "logbook/Call3Database.hpp"
+#include "logbook/GridLocatorCache.hpp"
 #include "logbook/logbook.h"
 #include "astro.h"
 #include "MessageBox.hpp"
@@ -563,6 +565,8 @@ private:
   QScopedPointer<Ui::MainWindow> ui;
 
   Configuration m_config;
+  Call3Database m_call3_database;
+  GridLocatorCache m_grid_locator_cache;
   LogBook m_logBook;            // must be after Configuration construction
   Cloudlog m_cloudlog;
   WSPRBandHopping m_WSPR_band_hopping;
@@ -1057,7 +1061,12 @@ private:
   void genStdMsgs(QString rpt, bool unconditional = false);
   void genCQMsg();
   void clearDX ();
+  // Completes the selected station's locator from CALL3 without replacing a
+  // decoded grid that identifies a different four-character square.
   void lookup();
+  // Combines a decoded or external locator with CALL3, while treating the
+  // latest same-band CQ locator as authoritative when their squares conflict.
+  QString resolvedGrid(QString const& call, QString const& candidateGrid);
   void ba2msg(QByteArray ba, char* message);
   void msgtype(QString t, QLineEdit* tx);
   void stub();
