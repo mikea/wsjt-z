@@ -314,6 +314,10 @@ public:
   void set_CTY_DAT_version(QString const& version);
   void rescan_logbook();
 
+  // Re-reads the CALL3.TXT version immediately before Settings is shown, so a
+  // database changed outside this dialog is reflected in the label.
+  void refresh_CALL3_version ();
+
   // Set transceiver frequency in Hertz.
   Q_SLOT void transceiver_frequency (Frequency);
 

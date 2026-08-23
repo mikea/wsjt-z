@@ -9,6 +9,7 @@ V2.0.19
 - Settings: Pwr column layout constraint restored to the Qt default (PR #146, SpudGunMan).
 
 [features]
+- Callsign lookup can now download maintained terrestrial or EME CALL3.TXT databases from Settings → Reporting, providing six-character grid locators where available. Updates are validated and atomically backed up before replacing the installed database.
 - DX Station Map: new world-map window that plots stations calling you and your logged QSOs on an azimuthal world map, with per-station tooltips and a bounded station list (PR #129, SpudGunMan).
 - Log rotation: new File menu action "Rotate wsjtx_log.adi" archives the current ADIF log with a timestamped name and starts a fresh one; also available remotely via a new UDP RotateLog message (type 17, documented in NetworkMessage.hpp) with collision-safe archive naming and a 5-second rate limit on the remote path. Includes a Python UDP example (PR #139, SpudGunMan).
 - Ignore tab: new button to save the current ignore list into the saved (permanent) list (PR #138, SpudGunMan).

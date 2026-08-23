@@ -235,6 +235,7 @@ set (wsjt_qt_CXXSRCS
   widgets/DoubleClickableRadioButton.cpp
   Network/LotWUsers.cpp
   Network/FileDownload.cpp
+  Network/Call3Downloader.cpp
   Network/FoxVerifier.cpp
   models/DecodeHighlightingModel.cpp
   widgets/DecodeHighlightingListView.cpp

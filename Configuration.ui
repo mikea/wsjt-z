@@ -2724,6 +2724,42 @@ Right click for insert and delete options.</string>
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="call3_groupBox">
+         <property name="title">
+          <string>High-resolution Grid Locator Database</string>
+         </property>
+         <layout class="QGridLayout" name="call3_grid_layout">
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="CALL3_file_label">
+            <property name="text">
+             <string>CALL3 File Version: not available</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="CALL3_download_button">
+            <property name="toolTip">
+             <string>Download callsign locations for terrestrial operation. Lookup uses the more precise six-character locator when one is available.</string>
+            </property>
+            <property name="text">
+             <string>Download Terrestrial CALL3.TXT</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="CALL3_EME_download_button">
+            <property name="toolTip">
+             <string>Download the EME-focused callsign database used by JT65 Deep Search and callsign lookup.</string>
+            </property>
+            <property name="text">
+             <string>Download EME CALL3.TXT</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_6">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

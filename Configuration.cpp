@@ -203,6 +203,7 @@
 #include "logbook/logbook.h"
 #include "widgets/LazyFillComboBox.hpp"
 #include "Network/FileDownload.hpp"
+#include "Network/Call3Downloader.hpp"
 
 #include "ui_Configuration.h"
 #include "moc_Configuration.cpp"
@@ -592,6 +593,8 @@ private:
   void after_CTY_downloaded();
   void set_CTY_DAT_version(QString const& version);
   void error_during_CTY_download (QString const& reason);
+  // Refreshes the CALL3 label from the database currently on disk.
+  void refresh_CALL3_version ();
   Q_SLOT void on_udp_server_line_edit_textChanged (QString const&);
   Q_SLOT void on_udp_server_line_edit_editingFinished ();
   Q_SLOT void on_save_path_select_push_button_clicked (bool);
@@ -603,6 +606,10 @@ private:
   Q_SLOT void on_reset_highlighting_to_defaults_push_button_clicked (bool);
   Q_SLOT void on_rescan_log_push_button_clicked (bool);
   Q_SLOT void on_CTY_download_button_clicked (bool);
+  // Replaces CALL3.TXT with the general terrestrial locator dataset.
+  Q_SLOT void on_CALL3_download_button_clicked (bool);
+  // Replaces CALL3.TXT with the EME-focused locator dataset.
+  Q_SLOT void on_CALL3_EME_download_button_clicked (bool);
   Q_SLOT void on_LotW_CSV_fetch_push_button_clicked (bool);
   Q_SLOT void on_hamlib_download_button_clicked (bool);
   Q_SLOT void on_revert_update_button_clicked (bool);
@@ -671,6 +678,7 @@ private:
 
   LotWUsers lotw_users_;
   Cloudlog cloudlog_;
+  Call3Downloader call3_downloader_;
 
   bool restart_sound_input_device_;
   bool restart_sound_output_device_;
@@ -1078,6 +1086,11 @@ void Configuration::set_CTY_DAT_version(QString const& version)
   m_->set_CTY_DAT_version(version);
 }
 
+void Configuration::refresh_CALL3_version ()
+{
+  m_->refresh_CALL3_version ();
+}
+
 void Configuration::set_calibration (CalibrationParams params)
 {
   m_->calibration_ = params;
@@ -1415,6 +1428,7 @@ Configuration::impl::impl (Configuration * self, QNetworkAccessManager * network
   , writeable_data_dir_ {QStandardPaths::writableLocation (QStandardPaths::DataLocation)}
   , lotw_users_ {network_manager_}
   , cloudlog_ {self}
+  , call3_downloader_ {network_manager_, writeable_data_dir_, this}
   , restart_sound_input_device_ {false}
   , restart_sound_output_device_ {false}
   , restart_tci_device_ {false}
@@ -1450,6 +1464,22 @@ Configuration::impl::impl (Configuration * self, QNetworkAccessManager * network
   , dns_lookup_id_ {-1}
 {
   ui_->setupUi (this);
+
+  connect (&call3_downloader_, &Call3Downloader::complete, this,
+           [this] (QString const& version) {
+             ui_->CALL3_download_button->setEnabled (true);
+             ui_->CALL3_EME_download_button->setEnabled (true);
+             ui_->CALL3_file_label->setText (
+               tr ("CALL3 File Version: %1").arg (version));
+           });
+  connect (&call3_downloader_, &Call3Downloader::error, this,
+           [this] (QString const& reason) {
+             ui_->CALL3_download_button->setEnabled (true);
+             ui_->CALL3_EME_download_button->setEnabled (true);
+             refresh_CALL3_version ();
+             MessageBox::warning_message (this, tr ("Error Loading CALL3.TXT file"), reason);
+           });
+  refresh_CALL3_version ();
 
   {
     // Make sure the default save directory exists
@@ -3109,6 +3139,31 @@ void Configuration::impl::after_CTY_downloaded ()
     ui_->CTY_file_label->setText(QString{"CTY File Version: %1"}.arg(logbook_->cty_version()));
   }
 }
+
+void Configuration::impl::refresh_CALL3_version ()
+{
+  auto const version = call3_downloader_.installed_version ();
+  ui_->CALL3_file_label->setText (
+    version.isEmpty () ? tr ("CALL3 File Version: not available")
+                       : tr ("CALL3 File Version: %1").arg (version));
+}
+
+void Configuration::impl::on_CALL3_download_button_clicked (bool /*clicked*/)
+{
+  ui_->CALL3_download_button->setEnabled (false);
+  ui_->CALL3_EME_download_button->setEnabled (false);
+  ui_->CALL3_file_label->setText (tr ("Downloading ..."));
+  call3_downloader_.start (Call3Downloader::Dataset::terrestrial);
+}
+
+void Configuration::impl::on_CALL3_EME_download_button_clicked (bool /*clicked*/)
+{
+  ui_->CALL3_download_button->setEnabled (false);
+  ui_->CALL3_EME_download_button->setEnabled (false);
+  ui_->CALL3_file_label->setText (tr ("Downloading ..."));
+  call3_downloader_.start (Call3Downloader::Dataset::eme);
+}
+
 void Configuration::impl::on_LotW_CSV_fetch_push_button_clicked (bool /*checked*/)
 {
   lotw_users_.load (ui_->LotW_CSV_URL_line_edit->text (), true, true);

@@ -1,5 +1,6 @@
 SOURCES += \
 Network/FileDownload.cpp \
+Network/Call3Downloader.cpp \
 Network/FoxVerifier.cpp \
 Network/LotWUsers.cpp \
 Network/MessageClient.cpp \
@@ -11,6 +12,7 @@ Network/wsprnet.cpp
 
 HEADERS    += \
 Network/FileDownload.hpp \
+Network/Call3Downloader.hpp \
 Network/FoxVerifier.hpp \
 Network/LotWUsers.hpp \
 Network/MessageClient.hpp \

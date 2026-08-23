@@ -2728,6 +2728,7 @@ void MainWindow::showStatusMessage(const QString& statusMsg)
 
 void MainWindow::on_actionSettings_triggered()               //Setup Dialog
 {
+  m_config.refresh_CALL3_version ();
   if (m_mode=="FT8") keep_frequency = true;
   // things that might change that we need know about
   auto callsign = m_config.my_callsign ();
