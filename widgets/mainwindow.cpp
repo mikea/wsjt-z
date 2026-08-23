@@ -14301,9 +14301,9 @@ bool MainWindow::callsignFiltered(DecodedText dt)
     if (is_CQ && grid_regexp.match(dxGrid).hasMatch()) {
         m_grid_locator_cache.remember(dxCall, dxGrid);
     }
-    if (is_73) {
-        dxGrid = resolvedGrid(dxCall, dxGrid);
-    }
+    // Resolve before retaining a priority candidate so CALL3 precision reaches
+    // the DX Grid field as well as the call-info panel.
+    dxGrid = resolvedGrid(dxCall, dxGrid);
 
     // Auto call next
     if (ui->cb_autoCallNext->isChecked() && dxCall == ui->dxCallEntry->text() ) {
