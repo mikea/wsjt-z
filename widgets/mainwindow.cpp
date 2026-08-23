@@ -5721,6 +5721,7 @@ void MainWindow::readFromStdout()                             //readFromStdout
             QString deCall;
             QString grid;
             decodedtext.deCallAndGrid(deCall,grid);
+            auto const inferredGrid = resolvedGrid (deCall, grid);
 
     QString rawViewLine;
     if ((m_unfilteredView && m_unfilteredView->isVisible()) || m_bandActivityRawView) {
@@ -5843,7 +5844,8 @@ void MainWindow::readFromStdout()                             //readFromStdout
                   ui->decodedTextBrowser->displayDecodedText(decodedtextNoAP,m_baseCall,m_mode,dxcc,
                                                              m_logBook,m_currentBand,m_config.ppfx(),
                                                              ui->cbCQonly->isVisible() && ui->cbCQonly->isChecked(),
-                                                             haveFSpread, fSpread, bDisplayPoints, m_points, ui->cbCQonlyIncl73->isChecked(), m_config.colourAll(), distance, state, isFiltered);
+                                                             haveFSpread, fSpread, bDisplayPoints, m_points, ui->cbCQonlyIncl73->isChecked(), m_config.colourAll(), distance, state, isFiltered,
+                                                             inferredGrid);
                   if (m_pskReporterReceivers.contains(decodedtextNoAP.transmittingCall().toUpper())) {
                       ui->decodedTextBrowser->highlight_callsign_line(decodedtextNoAP.transmittingCall(), QColor{}, QColor{}, false, true);
                   }
@@ -5851,7 +5853,8 @@ void MainWindow::readFromStdout()                             //readFromStdout
                   ui->decodedTextBrowser->displayDecodedText(decodedtext1,m_baseCall,m_mode,dxcc,
                                                              m_logBook,m_currentBand,m_config.ppfx(),
                                                              ui->cbCQonly->isVisible() && ui->cbCQonly->isChecked(),
-                                                             haveFSpread, fSpread, bDisplayPoints, m_points, ui->cbCQonlyIncl73->isChecked(), m_config.colourAll(), distance, state, isFiltered);
+                                                             haveFSpread, fSpread, bDisplayPoints, m_points, ui->cbCQonlyIncl73->isChecked(), m_config.colourAll(), distance, state, isFiltered,
+                                                             inferredGrid);
                   if (m_pskReporterReceivers.contains(decodedtext1.transmittingCall().toUpper())) {
                       ui->decodedTextBrowser->highlight_callsign_line(decodedtext1.transmittingCall(), QColor{}, QColor{}, false, true);
                   }

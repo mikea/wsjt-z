@@ -29,12 +29,16 @@ public:
   void insertLineSpacer(QString const&);
   // Z
   void setBandActivity(bool b);
+  // Renders one decode and derives its highest-priority worked-before colour.
+  // inferredGrid supplies a locator learned outside the message, allowing
+  // locator-less sign-offs to use the same grid status as filtering.
   void displayDecodedText(DecodedText const& decodedText, QString const& myCall, QString const& mode,
                           bool displayDXCCEntity, LogBook const& logBook,
                           QString const& currentBand=QString {}, bool ppfx=false, bool bCQonly=false,
                           bool haveFSpread = false, float fSpread = 0.0, bool bDisplayPoints=false,
                           int points=-99,
-                          bool incl73=false, bool colourAll=false, QString distance = "", QString state = "", bool filtered = false);
+                          bool incl73=false, bool colourAll=false, QString distance = "", QString state = "", bool filtered = false,
+                          QString const& inferredGrid = QString {});
   void displayTransmittedText(QString text, QString modeTx, qint32 txFreq, bool bFastMode,
                               double TRperiod, bool bSuperfox);
   void displayQSY(QString text);

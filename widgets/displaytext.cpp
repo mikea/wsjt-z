@@ -460,7 +460,8 @@ void DisplayText::displayDecodedText(DecodedText const& decodedText, QString con
                                      bool displayDXCCEntity, LogBook const& logBook,
                                      QString const& currentBand, bool ppfx, bool bCQonly,
                                      bool haveFSpread, float fSpread, bool bDisplayPoints, int points,
-                                     bool incl73, bool colourAll, QString distance, QString state, bool filtered)
+                                     bool incl73, bool colourAll, QString distance, QString state, bool filtered,
+                                     QString const& inferredGrid)
 {
   m_points=points;
   m_bDisplayPoints=bDisplayPoints;
@@ -495,7 +496,8 @@ void DisplayText::displayDecodedText(DecodedText const& decodedText, QString con
   QString dxCall;
   QString dxGrid;
   decodedText.deCallAndGrid (/*out*/ dxCall, dxGrid);
-  if(!dxGrid.contains(kReGrid)) dxGrid="";
+  if (!dxGrid.contains (kReGrid)) dxGrid = "";
+  if (inferredGrid.contains (kReGrid)) dxGrid = inferredGrid;
   message = message.left (message.indexOf (QChar::Nbsp)).trimmed ();
 
   // Z
