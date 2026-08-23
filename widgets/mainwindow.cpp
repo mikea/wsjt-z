@@ -14454,8 +14454,12 @@ bool MainWindow::callsignFiltered(DecodedText dt)
 
         if (m_zdebug) log("callsignFiltered: New/New on band filtering...");
 
-        m_logBook.match (dxCall, m_mode, dxGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
-        m_logBook.match (dxCall, m_mode, dxGrid, looked_up, callB4onBand, countryB4onBand, gridB4onBand,
+        // New-grid status is defined by the four-character square. Retain the
+        // full locator in dxGrid for selection and logging, but do not let a
+        // CALL3 subsquare make an otherwise worked square appear new.
+        auto const newnessGrid = dxGrid.left (4);
+        m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
+        m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4onBand, countryB4onBand, gridB4onBand,
                        continentB4onBand, CQZoneB4onBand, ITUZoneB4onBand, m_currentBand);
         matched = true;
 
@@ -14588,8 +14592,9 @@ bool MainWindow::callsignFiltered(DecodedText dt)
 
 
               if (!matched) {
-                  m_logBook.match (dxCall, m_mode, dxGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
-                  m_logBook.match (dxCall, m_mode, dxGrid, looked_up, callB4onBand, countryB4onBand, gridB4onBand,
+                  auto const newnessGrid = dxGrid.left (4);
+                  m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
+                  m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4onBand, countryB4onBand, gridB4onBand,
                              continentB4onBand, CQZoneB4onBand, ITUZoneB4onBand, m_currentBand);
               }
 
@@ -15114,7 +15119,10 @@ void MainWindow::dxLookup(QString dxCall, QString dxGrid) {
     ui->ci_cqzone->setText(QString::number(looked_up.CQ_zone));
     ui->ci_ituzone->setText(QString::number(looked_up.ITU_zone));
 
-    m_logBook.match (dxCall, m_mode, dxGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
+    // The call-info newness marker follows the same four-character square
+    // semantics as filtering; dxGrid remains precise for display and logging.
+    auto const newnessGrid = dxGrid.left (4);
+    m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
 
     QFont bold = ui->ci_continent->font();
     bold.setWeight(QFont::Bold);
