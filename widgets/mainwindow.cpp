@@ -6297,12 +6297,15 @@ void MainWindow::auto_sequence (DecodedText const& message, unsigned start_toler
                       || (!ui->tx1->isEnabled () && m_QSOProgress == REPORT);
     bool const qrm_stop_window_match = m_QSOProgress == CALLING
       || qAbs (ui->TxFreqSpinBox->value () - df) <= int (stop_tolerance);
+    bool const signoff_keeps_auto_call_target = ui->cbCQonlyIncl73->isChecked ()
+      && terminal_signoff;
     if (m_auto
         && ui->cbAutoCall->isChecked()
         && auto_qrm_guard_state
         && (SpecOp::HOUND != m_specOp) && qrm_stop_window_match //
         && message_words.at (2) != "DE"
         && !message_words.at (2).contains (QRegularExpression {"(^(CQ|QRZ))|" + m_baseCall})
+        && !signoff_keeps_auto_call_target
         && have_selected_dx
         // Selected DX station is in a directed exchange with someone else, not us.
       && directed_with_selected_dx
