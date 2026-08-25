@@ -5803,11 +5803,12 @@ void MainWindow::readFromStdout()                             //readFromStdout
 
               QString distance;
 
-              if ((m_config.showDistance() || m_config.showBearing())&& grid.contains(grid_regexp)) {
+              if ((m_config.showDistance() || m_config.showBearing())
+                  && inferredGrid.contains(grid_regexp)) {
                   double utch=0.0;
                   int nAz,nEl,nDmiles,nDkm,nHotAz,nHotABetter;
                   azdist_(const_cast <char *> ((my_grid + "      ").left (6).toLatin1().constData()),
-                          const_cast <char *> ((grid + "      ").left (6).toLatin1().constData()),&utch,
+                          const_cast <char *> ((inferredGrid + "      ").left (6).toLatin1().constData()),&utch,
                           &nAz,&nEl,&nDmiles,&nDkm,&nHotAz,&nHotABetter,6,6);
 
                   if (m_config.showDistance()) {
@@ -5943,10 +5944,11 @@ void MainWindow::readFromStdout()                             //readFromStdout
             }
           }
           if(m_bCallingCQ && !m_bAutoReply && for_us && m_specOp!=SpecOp::FOX && m_specOp!=SpecOp::HOUND) {
+            bool const selectMaxDistance = ui->respondComboBox->currentText() == "CQ: Max Dist";
             bool bProcessMsgNormally=ui->respondComboBox->currentText()=="CQ: First" or
-                (ui->respondComboBox->currentText()=="CQ: Max Dist" and m_ActiveStationsWidget==NULL) or
+                (selectMaxDistance and m_ActiveStationsWidget==NULL) or
                 (m_ActiveStationsWidget!=NULL and !m_ActiveStationsWidget->isVisible());
-            if (decodedtext.messageWords().length() >= 3) {
+            if (!selectMaxDistance && decodedtext.messageWords().length() >= 3) {
                 // Accept any valid reply to CQ, including plain call+grid replies.
                 // The original check incorrectly inspected word 2 (the caller's callsign)
                 // instead of the reply/report field.
@@ -5965,10 +5967,11 @@ void MainWindow::readFromStdout()                             //readFromStdout
                     .arg(isFiltered).arg(parts[5]).arg(parts.size() > 6 ? parts[6] : QString()).arg(m_baseCall));
             }
 
-            if(!bProcessMsgNormally and m_ActiveStationsWidget and ui->respondComboBox->currentText()=="CQ: Max Dist") {
+            if(!bProcessMsgNormally and m_ActiveStationsWidget and selectMaxDistance) {
               QString deCall;
               QString deGrid;
               decodedtext.deCallAndGrid(/*out*/deCall,deGrid);
+              deGrid = resolvedGrid(deCall, deGrid);
               // if they dont' send their grid we'll use ours and assume dx=0
               if (deGrid.length() == 0) deGrid = my_grid;
 
