@@ -14681,7 +14681,7 @@ bool MainWindow::callsignFiltered(DecodedText dt)
     if (forcePreferPromotion) {
       prio = true;
       // Restart priority baseline when switching from non-preferred to preferred pool.
-      m_maxDistance = 0;
+      m_maxDistance = -1;
       m_maxSignal = -31;
     }
 
@@ -14698,7 +14698,7 @@ bool MainWindow::callsignFiltered(DecodedText dt)
             // or if both current and new candidates have the same PSK-spotted status.
             switch (ui->cb_autoCallPriority->currentIndex()) {
             case 2: // Distance
-                if (dxGrid.length() == 4 && dxGrid != "RR73" && !dxGrid.startsWith("R-") && !dxGrid.startsWith("R+")) {
+                if (grid_regexp.match(dxGrid).hasMatch()) {
                     double utch=0.0;
                     int nAz,nEl,nDmiles,nDkm,nHotAz,nHotABetter;
                     azdist_(const_cast <char *> ((m_config.my_grid () + "      ").left (6).toLatin1 ().constData ()),
@@ -14708,9 +14708,11 @@ bool MainWindow::callsignFiltered(DecodedText dt)
                         prio = true;
                         m_maxDistance = nDkm;
                     }
-                } else {
+                } else if (m_maxDistance < 0) {
+                    // Retain one gridless fallback, but never let a later
+                    // unmeasurable candidate displace a measured distance.
                     prio = true;
-                    m_maxDistance = 1;
+                    m_maxDistance = 0;
                 }
                 break;
             case 1: // Signal strength
@@ -15826,7 +15828,7 @@ void MainWindow::ZProcess ()
     busySlots.prepend(QVector<int>());
 
 
-    m_maxDistance = 0 ;
+    m_maxDistance = -1;
     m_maxSignal = -30;
     clearPounceState();
     m_beeped = false;

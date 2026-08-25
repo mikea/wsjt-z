@@ -765,7 +765,7 @@ private:
   QString m_lastCall;
   int	  m_lastX = -1;
   int	  m_lastY = -1;
-  int     m_maxDistance = 0;
+  int     m_maxDistance = -1;
   int     m_maxSignal = -30;
   QString m_priorityCall;
   bool    m_priorityCallPreferCQTarget = false;
