@@ -1733,6 +1733,7 @@ void MainWindow::writeSettings()
   m_settings->setValue ("filter_c_OC", ui->cb_c_OC->isChecked());
   m_settings->setValue ("filter_CQDX_Continent", ui->cb_filter_CQDX_Continent->currentIndex());
   m_settings->setValue ("AutoIgnore", ui->cb_IgnoreAfterWD->isChecked());
+  m_settings->setValue ("filter_allowUnconfirmed", ui->cb_f_AllowUnconfirmed->isChecked());
   m_settings->setValue ("filter_LOTW", ui->cb_f_LOTW->isChecked());
   m_settings->setValue ("CQonlyIncl73", ui->cbCQonlyIncl73->isChecked());
   m_settings->setValue ("dockWaterfall", ui->cbDockWF->isChecked());
@@ -1982,6 +1983,7 @@ void MainWindow::readSettings()
   ui->cb_c_NA->setChecked(m_settings->value("filter_c_NA", true).toBool());
   ui->cb_c_SA->setChecked(m_settings->value("filter_c_SA", true).toBool());
   ui->cb_c_OC->setChecked(m_settings->value("filter_c_OC", true).toBool());
+  ui->cb_f_AllowUnconfirmed->setChecked(m_settings->value("filter_allowUnconfirmed", false).toBool());
   ui->cb_f_LOTW->setChecked(m_settings->value("filter_LOTW", false).toBool());
   ui->cb_filter_CQDX_Continent->setCurrentIndex(m_settings->value("filter_CQDX_Continent", 0).toInt());
   ui->le_ignoreCQXX->setText(m_settings->value("ignoreCQXX").toString());
@@ -14284,12 +14286,13 @@ bool MainWindow::callsignFiltered(DecodedText dt)
     if (m_zdebug) log("message:" + dt.string());
     dt.deCallAndGrid (/*out*/ dxCall, dxGrid);
     if (m_zdebug) log("dxCall: " + dxCall);
-    if (m_zdebug) log(QString("callsignFiltered: dxCall=%1 dxGrid=%2 filtering=%3 minDb=%4 LOTW=%5")
+    if (m_zdebug) log(QString("callsignFiltered: dxCall=%1 dxGrid=%2 filtering=%3 minDb=%4 LOTW=%5 allowUnconfirmed=%6")
                       .arg(dxCall)
                       .arg(dxGrid)
                       .arg(ui->cb_filtering->isChecked())
                       .arg(ui->sbMindB->value())
-                      .arg(ui->cb_f_LOTW->isChecked()));
+                      .arg(ui->cb_f_LOTW->isChecked())
+                      .arg(ui->cb_f_AllowUnconfirmed->isChecked()));
     int nmod;
     if(m_mode=="FT2") {
       int period = (int)round(double(dt.timeInSeconds()) / m_TRperiod);
@@ -14471,9 +14474,12 @@ bool MainWindow::callsignFiltered(DecodedText dt)
         // full locator in dxGrid for selection and logging, but do not let a
         // CALL3 subsquare make an otherwise worked square appear new.
         auto const newnessGrid = dxGrid.left (4);
-        m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4, countryB4, gridB4, continentB4, CQZoneB4, ITUZoneB4);
+        auto const qso_set = ui->cb_f_AllowUnconfirmed->isChecked()
+          ? LogBook::QsoSet::LotwConfirmed : LogBook::QsoSet::All;
+        m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4, countryB4, gridB4,
+                         continentB4, CQZoneB4, ITUZoneB4, QString {}, qso_set);
         m_logBook.match (dxCall, m_mode, newnessGrid, looked_up, callB4onBand, countryB4onBand, gridB4onBand,
-                       continentB4onBand, CQZoneB4onBand, ITUZoneB4onBand, m_currentBand);
+                         continentB4onBand, CQZoneB4onBand, ITUZoneB4onBand, m_currentBand, qso_set);
         matched = true;
 
         if (ui->cb_callB4->isChecked() && callB4) return true;

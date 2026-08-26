@@ -251,6 +251,7 @@ set (wsjt_qt_CXXSRCS
   models/CabrilloLog.cpp
   logbook/AD1CCty.cpp
   logbook/WorkedBefore.cpp
+  logbook/LotwConfirmation.cpp
   logbook/Multiplier.cpp
   Network/NetworkAccessManager.cpp
   widgets/LazyFillComboBox.cpp

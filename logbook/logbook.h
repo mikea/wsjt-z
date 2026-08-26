@@ -25,6 +25,8 @@ class LogBook final
   Q_OBJECT
 
 public:
+  using QsoSet = WorkedBefore::QsoSet;
+
   LogBook (Configuration const *);
   ~LogBook ();
   QString const& path () const {return worked_before_.path ();}
@@ -35,10 +37,14 @@ public:
             , QByteArray const& ADIF_record);
   AD1CCty const * countries () const {return worked_before_.countries ();}
   void rescan ();
+
+  // Computes every worked-before category from one consistent QSO population.
+  // Callers choose the current band for on-band matching and LotwConfirmed when
+  // unconfirmed records must remain eligible for another contact.
   void match (QString const& call, QString const& mode, QString const& grid,
               AD1CCty::Record const&, bool& callB4, bool& countryB4,
               bool &gridB4, bool &continentB4, bool& CQZoneB4, bool& ITUZoneB4,
-              QString const& currentBand = QString {}) const;
+              QString const& currentBand = QString {}, QsoSet qso_set = QsoSet::All) const;
   QByteArray QSOToADIF (QString const& hisCall, QString const& hisGrid, QString const& mode,
                         QString const& rptSent, QString const& rptRcvd, QDateTime const& dateTimeOn,
                         QDateTime const& dateTimeOff, QString const& band, QString const& comments,

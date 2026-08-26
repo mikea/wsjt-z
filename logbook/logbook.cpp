@@ -30,20 +30,21 @@ void LogBook::match (QString const& call, QString const& mode, QString const& gr
                      bool& continentB4,
                      bool& CQZoneB4,
                      bool& ITUZoneB4,
-                     QString const& band) const
+                     QString const& band,
+                     QsoSet qso_set) const
 {
   if (call.size() > 0)
     {
       auto const& mode_to_check = (config_ && !config_->highlight_by_mode ()) ? QString {} : mode;
-      callB4 = worked_before_.call_worked (call, mode_to_check, band);
-      gridB4 = worked_before_.grid_worked(grid, mode_to_check, band);
+      callB4 = worked_before_.call_worked (call, mode_to_check, band, qso_set);
+      gridB4 = worked_before_.grid_worked(grid, mode_to_check, band, qso_set);
       auto const& countryName = looked_up.entity_name;
       if (countryName.size ())
         {
-          countryB4 = worked_before_.country_worked (countryName, mode_to_check, band);
-          continentB4 = worked_before_.continent_worked (looked_up.continent, mode_to_check, band);
-          CQZoneB4 = worked_before_.CQ_zone_worked (looked_up.CQ_zone, mode_to_check, band);
-          ITUZoneB4 = worked_before_.ITU_zone_worked (looked_up.ITU_zone, mode_to_check, band);
+          countryB4 = worked_before_.country_worked (countryName, mode_to_check, band, qso_set);
+          continentB4 = worked_before_.continent_worked (looked_up.continent, mode_to_check, band, qso_set);
+          CQZoneB4 = worked_before_.CQ_zone_worked (looked_up.CQ_zone, mode_to_check, band, qso_set);
+          ITUZoneB4 = worked_before_.ITU_zone_worked (looked_up.ITU_zone, mode_to_check, band, qso_set);
         }
       else
         {

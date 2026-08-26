@@ -2972,6 +2972,16 @@ list. The list can be maintained in Settings (F2).</string>
                           </widget>
                          </item>
                          <item>
+                          <widget class="QCheckBox" name="cb_f_AllowUnconfirmed">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use LoTW confirmations when evaluating the New and New on band filters.&lt;/p&gt;&lt;p&gt;When enabled, a Call, DXCC, Continent, Grid, CQ zone, or ITU zone counts as worked only when a matching ADIF record contains &lt;tt&gt;LOTW_QSL_RCVD=Y&lt;/tt&gt;. Records marked unconfirmed or without that field remain eligible.&lt;/p&gt;&lt;p&gt;Export your log from Wavelog, replace &lt;tt&gt;wsjtx_log.adi&lt;/tt&gt;, and rescan the ADIF log to refresh confirmation status. LOTW Only and other filters are unaffected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="text">
+                            <string>Allow Unconfirmed</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
                           <widget class="QCheckBox" name="cb_f_LOTW">
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show only stations registered with LOTW&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

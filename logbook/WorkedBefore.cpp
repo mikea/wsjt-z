@@ -22,6 +22,7 @@
 #include <QTextStream>
 #include <QDateTime>
 #include "Configuration.hpp"
+#include "LotwConfirmation.hpp"
 #include "revision_utils.hpp"
 #include "Logger.hpp"
 #include "qt_helpers.hpp"
@@ -226,6 +227,12 @@ namespace
 {
   auto const logFileName = "wsjtx_log.adi";
 
+  struct worked_before_databases
+  {
+    worked_before_database_type all;
+    worked_before_database_type lotw_confirmed;
+  };
+
   // Exception class suitable for using with QtConcurrent across
   // thread boundaries
   class LoaderException final
@@ -279,9 +286,9 @@ namespace
     return QString {};
   }
 
-  worked_before_database_type loader (QString const& path, AD1CCty const * prefixes)
+  worked_before_databases loader (QString const& path, AD1CCty const * prefixes)
   {
-    worked_before_database_type worked;
+    worked_before_databases worked;
     QFile inputFile {path};
     if (inputFile.exists ())
       {
@@ -342,14 +349,19 @@ namespace
                           {
                             mode = extractField (record, "SUBMODE").toUpper ();
                           }
-                        worked.emplace (call.toUpper ()
-                                        , extractField (record, "GRIDSQUARE").left (4).toUpper () // not interested in 6-digit grids
-                                        , extractField (record, "BAND").toUpper ()
-                                        , mode
-                                        , entity.entity_name
-                                        , entity.continent
-                                        , entity.CQ_zone
-                                        , entity.ITU_zone);
+                        worked_entry entry {call.toUpper ()
+                                            , extractField (record, "GRIDSQUARE").left (4).toUpper () // not interested in 6-digit grids
+                                            , extractField (record, "BAND").toUpper ()
+                                            , mode
+                                            , entity.entity_name
+                                            , entity.continent
+                                            , entity.CQ_zone
+                                            , entity.ITU_zone};
+                        worked.all.emplace (entry);
+                        if (LotwConfirmation::received (record))
+                          {
+                            worked.lotw_confirmed.emplace (entry);
+                          }
                       }
                   }
               }
@@ -383,22 +395,32 @@ public:
   Configuration const * configuration_;
   QString path_;
   AD1CCty prefixes_;
-  QFutureWatcher<worked_before_database_type> loader_watcher_;
-  QFuture<worked_before_database_type> async_loader_;
-  worked_before_database_type worked_;
+  // Returns the index selected by the caller without exposing the duplicate
+  // storage used to keep confirmation-aware lookups as fast as normal ones.
+  worked_before_database_type const& worked (WorkedBefore::QsoSet qso_set) const
+  {
+    return WorkedBefore::QsoSet::LotwConfirmed == qso_set ? lotw_confirmed_ : all_worked_;
+  }
+
+  QFutureWatcher<worked_before_databases> loader_watcher_;
+  QFuture<worked_before_databases> async_loader_;
+  worked_before_database_type all_worked_;
+  worked_before_database_type lotw_confirmed_;
 };
 
 WorkedBefore::WorkedBefore (Configuration const * configuration)
   : m_ {configuration}
 {
   Q_ASSERT (configuration);
-  connect (&m_->loader_watcher_, &QFutureWatcher<worked_before_database_type>::finished, [this] () {
+  connect (&m_->loader_watcher_, &QFutureWatcher<worked_before_databases>::finished, [this] () {
       QString error;
       size_t n {0};
       try
         {
-          m_->worked_ = m_->loader_watcher_.result ();
-          n = m_->worked_.size ();
+          auto loaded = m_->loader_watcher_.result ();
+          m_->all_worked_ = std::move (loaded.all);
+          m_->lotw_confirmed_ = std::move (loaded.lotw_confirmed);
+          n = m_->all_worked_.size ();
         }
       catch (LoaderException const& e)
         {
@@ -481,30 +503,34 @@ bool WorkedBefore::add (QString const& call
 #endif
                  ;
         }
-      m_->worked_.emplace (call.toUpper (), grid.left (4).toUpper (), band.toUpper (), mode.toUpper ()
-                           , entity.entity_name, entity.continent, entity.CQ_zone, entity.ITU_zone);
+      // A newly logged contact has no received LoTW confirmation yet. A later
+      // Wavelog export and rescan will place it in the confirmed index.
+      m_->all_worked_.emplace (call.toUpper (), grid.left (4).toUpper (), band.toUpper (), mode.toUpper ()
+                               , entity.entity_name, entity.continent, entity.CQ_zone, entity.ITU_zone);
     }
   return true;
 }
 
-bool WorkedBefore::country_worked (QString const& country, QString const& mode, QString const& band) const
+bool WorkedBefore::country_worked (QString const& country, QString const& mode, QString const& band,
+                                   QsoSet qso_set) const
 {
+  auto const& worked = m_->worked (qso_set);
   if (mode.size ())
     {
       if (band.size ())
         {
           return
             country.size ()
-            && m_->worked_.get<entity_mode_band> ().end ()
-            != m_->worked_.get<entity_mode_band> ().find (std::make_tuple (country, mode.toUpper (), band.toUpper ()));
+            && worked.get<entity_mode_band> ().end ()
+            != worked.get<entity_mode_band> ().find (std::make_tuple (country, mode.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
           return
             country.size ()
-            && m_->worked_.get<entity_mode_band> ().end ()
-            != m_->worked_.get<entity_mode_band> ().find (std::make_tuple (country, mode.toUpper ()));
+            && worked.get<entity_mode_band> ().end ()
+            != worked.get<entity_mode_band> ().find (std::make_tuple (country, mode.toUpper ()));
         }
     }
   else
@@ -513,22 +539,24 @@ bool WorkedBefore::country_worked (QString const& country, QString const& mode, 
         {
           return
             country.size ()
-            && m_->worked_.get<entity_band> ().end ()
-            != m_->worked_.get<entity_band> ().find (std::make_tuple (country, band.toUpper ()));
+            && worked.get<entity_band> ().end ()
+            != worked.get<entity_band> ().find (std::make_tuple (country, band.toUpper ()));
         }
       else
         {
           // partial key lookup
           return
             country.size ()
-            && m_->worked_.get<entity_band> ().end ()
-            != m_->worked_.get<entity_band> ().find (country);
+            && worked.get<entity_band> ().end ()
+            != worked.get<entity_band> ().find (country);
         }
     }
 }
 
-bool WorkedBefore::grid_worked (QString const& grid, QString const& mode, QString const& band) const
+bool WorkedBefore::grid_worked (QString const& grid, QString const& mode, QString const& band,
+                                QsoSet qso_set) const
 {
+  auto const& worked_database = m_->worked (qso_set);
   auto gridsquare = grid.left (4).toUpper ();
   if (m_->configuration_->highlight_only_fields ())
     {
@@ -536,8 +564,8 @@ bool WorkedBefore::grid_worked (QString const& grid, QString const& mode, QStrin
       // a (CompatibleKey, CompatibleCompare) concept so we must
       // partially scan the index
       auto range = boost::make_iterator_range (
-                                               m_->worked_.get<grid_mode_band> ().lower_bound (gridsquare.left (2))
-                                               , m_->worked_.get<grid_mode_band> ().upper_bound (gridsquare.left (2) + "99"));
+                                               worked_database.get<grid_mode_band> ().lower_bound (gridsquare.left (2))
+                                               , worked_database.get<grid_mode_band> ().upper_bound (gridsquare.left (2) + "99"));
       for (worked_entry const& worked : range)
         {
           if ((!mode.size () || mode.toUpper () == worked.mode_)
@@ -553,159 +581,167 @@ bool WorkedBefore::grid_worked (QString const& grid, QString const& mode, QStrin
         {
           if (band.size ())
             {
-              return m_->worked_.get<grid_mode_band> ().end ()
-                != m_->worked_.get<grid_mode_band> ().find (std::make_tuple (gridsquare, mode.toUpper (), band.toUpper ()));
+              return worked_database.get<grid_mode_band> ().end ()
+                != worked_database.get<grid_mode_band> ().find (std::make_tuple (gridsquare, mode.toUpper (), band.toUpper ()));
             }
           else
             {
               // partial key lookup
-              return m_->worked_.get<grid_mode_band> ().end ()
-                != m_->worked_.get<grid_mode_band> ().find (std::make_tuple (gridsquare, mode.toUpper ()));
+              return worked_database.get<grid_mode_band> ().end ()
+                != worked_database.get<grid_mode_band> ().find (std::make_tuple (gridsquare, mode.toUpper ()));
             }
         }
       else
         {
           if (band.size ())
             {
-              return m_->worked_.get<grid_band> ().end ()
-                != m_->worked_.get<grid_band> ().find (std::make_tuple (gridsquare, band.toUpper ()));
+              return worked_database.get<grid_band> ().end ()
+                != worked_database.get<grid_band> ().find (std::make_tuple (gridsquare, band.toUpper ()));
             }
           else
             {
               // partial key lookup
-              return m_->worked_.get<grid_band> ().end ()
-                != m_->worked_.get<grid_band> ().find (gridsquare);
+              return worked_database.get<grid_band> ().end ()
+                != worked_database.get<grid_band> ().find (gridsquare);
             }
         }
     }
   return false;
 }
 
-bool WorkedBefore::call_worked (QString const& call, QString const& mode, QString const& band) const
+bool WorkedBefore::call_worked (QString const& call, QString const& mode, QString const& band,
+                                QsoSet qso_set) const
 {
+  auto const& worked = m_->worked (qso_set);
   if (mode.size ())
     {
       if (band.size ())
         {
-          return m_->worked_.get<call_mode_band> ().end ()
-            != m_->worked_.get<call_mode_band> ().find (std::make_tuple (call.toUpper (), mode.toUpper (), band.toUpper ()));
+          return worked.get<call_mode_band> ().end ()
+            != worked.get<call_mode_band> ().find (std::make_tuple (call.toUpper (), mode.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<call_mode_band> ().end ()
-            != m_->worked_.get<call_mode_band> ().find (std::make_tuple (call.toUpper (), mode.toUpper ()));
+          return worked.get<call_mode_band> ().end ()
+            != worked.get<call_mode_band> ().find (std::make_tuple (call.toUpper (), mode.toUpper ()));
         }
     }
   else
     {
       if (band.size ())
         {
-          return m_->worked_.get<call_band> ().end ()
-            != m_->worked_.get<call_band> ().find (std::make_tuple (call.toUpper (), band.toUpper ()));
+          return worked.get<call_band> ().end ()
+            != worked.get<call_band> ().find (std::make_tuple (call.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<call_band> ().end ()
-            != m_->worked_.get<call_band> ().find (std::make_tuple (call.toUpper ()));
+          return worked.get<call_band> ().end ()
+            != worked.get<call_band> ().find (std::make_tuple (call.toUpper ()));
         }
     }
 }
 
-bool WorkedBefore::continent_worked (Continent continent, QString const& mode, QString const& band) const
+bool WorkedBefore::continent_worked (Continent continent, QString const& mode, QString const& band,
+                                     QsoSet qso_set) const
 {
+  auto const& worked = m_->worked (qso_set);
   if (mode.size ())
     {
       if (band.size ())
         {
-          return m_->worked_.get<continent_mode_band> ().end ()
-            != m_->worked_.get<continent_mode_band> ().find (std::make_tuple (continent, mode.toUpper (), band.toUpper ()));
+          return worked.get<continent_mode_band> ().end ()
+            != worked.get<continent_mode_band> ().find (std::make_tuple (continent, mode.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<continent_mode_band> ().end ()
-            != m_->worked_.get<continent_mode_band> ().find (std::make_tuple (continent, mode.toUpper ()));
+          return worked.get<continent_mode_band> ().end ()
+            != worked.get<continent_mode_band> ().find (std::make_tuple (continent, mode.toUpper ()));
         }
     }
   else
     {
       if (band.size ())
         {
-          return m_->worked_.get<continent_band> ().end ()
-            != m_->worked_.get<continent_band> ().find (std::make_tuple (continent, band.toUpper ()));
+          return worked.get<continent_band> ().end ()
+            != worked.get<continent_band> ().find (std::make_tuple (continent, band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<continent_band> ().end ()
-            != m_->worked_.get<continent_band> ().find (continent);
+          return worked.get<continent_band> ().end ()
+            != worked.get<continent_band> ().find (continent);
         }
     }
 }
 
-bool WorkedBefore::CQ_zone_worked (int CQ_zone, QString const& mode, QString const& band) const
+bool WorkedBefore::CQ_zone_worked (int CQ_zone, QString const& mode, QString const& band,
+                                   QsoSet qso_set) const
 {
+  auto const& worked = m_->worked (qso_set);
   if (mode.size ())
     {
       if (band.size ())
         {
-          return m_->worked_.get<CQ_zone_mode_band> ().end ()
-            != m_->worked_.get<CQ_zone_mode_band> ().find (std::make_tuple (CQ_zone, mode.toUpper (), band.toUpper ()));
+          return worked.get<CQ_zone_mode_band> ().end ()
+            != worked.get<CQ_zone_mode_band> ().find (std::make_tuple (CQ_zone, mode.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<CQ_zone_mode_band> ().end ()
-            != m_->worked_.get<CQ_zone_mode_band> ().find (std::make_tuple (CQ_zone, mode.toUpper ()));
+          return worked.get<CQ_zone_mode_band> ().end ()
+            != worked.get<CQ_zone_mode_band> ().find (std::make_tuple (CQ_zone, mode.toUpper ()));
         }
     }
   else
     {
       if (band.size ())
         {
-          return m_->worked_.get<CQ_zone_band> ().end ()
-            != m_->worked_.get<CQ_zone_band> ().find (std::make_tuple (CQ_zone, band.toUpper ()));
+          return worked.get<CQ_zone_band> ().end ()
+            != worked.get<CQ_zone_band> ().find (std::make_tuple (CQ_zone, band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<CQ_zone_band> ().end ()
-            != m_->worked_.get<CQ_zone_band> ().find (CQ_zone);
+          return worked.get<CQ_zone_band> ().end ()
+            != worked.get<CQ_zone_band> ().find (CQ_zone);
         }
     }
 }
 
 
-bool WorkedBefore::ITU_zone_worked (int ITU_zone, QString const& mode, QString const& band) const
+bool WorkedBefore::ITU_zone_worked (int ITU_zone, QString const& mode, QString const& band,
+                                    QsoSet qso_set) const
 {
+  auto const& worked = m_->worked (qso_set);
   if (mode.size ())
     {
       if (band.size ())
         {
-          return m_->worked_.get<ITU_zone_mode_band> ().end ()
-            != m_->worked_.get<ITU_zone_mode_band> ().find (std::make_tuple (ITU_zone, mode.toUpper (), band.toUpper ()));
+          return worked.get<ITU_zone_mode_band> ().end ()
+            != worked.get<ITU_zone_mode_band> ().find (std::make_tuple (ITU_zone, mode.toUpper (), band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<ITU_zone_mode_band> ().end ()
-            != m_->worked_.get<ITU_zone_mode_band> ().find (std::make_tuple (ITU_zone, mode.toUpper ()));
+          return worked.get<ITU_zone_mode_band> ().end ()
+            != worked.get<ITU_zone_mode_band> ().find (std::make_tuple (ITU_zone, mode.toUpper ()));
         }
     }
   else
     {
       if (band.size ())
         {
-          return m_->worked_.get<ITU_zone_band> ().end ()
-            != m_->worked_.get<ITU_zone_band> ().find (std::make_tuple (ITU_zone, band.toUpper ()));
+          return worked.get<ITU_zone_band> ().end ()
+            != worked.get<ITU_zone_band> ().find (std::make_tuple (ITU_zone, band.toUpper ()));
         }
       else
         {
           // partial key lookup
-          return m_->worked_.get<ITU_zone_band> ().end ()
-            != m_->worked_.get<ITU_zone_band> ().find (ITU_zone);
+          return worked.get<ITU_zone_band> ().end ()
+            != worked.get<ITU_zone_band> ().find (ITU_zone);
         }
     }
 }

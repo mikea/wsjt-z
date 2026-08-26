@@ -29,3 +29,10 @@ add_executable (test_call3_database
   )
 target_link_libraries (test_call3_database Qt5::Core Qt5::Test)
 add_test (test_call3_database test_call3_database)
+
+add_executable (test_lotw_confirmation
+  test_lotw_confirmation.cpp
+  ../logbook/LotwConfirmation.cpp
+  )
+target_link_libraries (test_lotw_confirmation Qt5::Core Qt5::Test)
+add_test (test_lotw_confirmation test_lotw_confirmation)
