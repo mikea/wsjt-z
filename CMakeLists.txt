@@ -184,6 +184,7 @@ set (wsjt_qt_CXXSRCS
   helper_functions.cpp
   qt_helpers.cpp
   widgets/MessageBox.cpp
+  widgets/CustomAlertMatcher.cpp
   MetaDataRegistry.cpp
   Network/NetworkServerLookup.cpp
   revision_utils.cpp

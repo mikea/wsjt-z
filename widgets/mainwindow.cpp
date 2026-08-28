@@ -64,6 +64,7 @@
 #include "helper_functions.h"
 #include "revision_utils.hpp"
 #include "qt_helpers.hpp"
+#include "CustomAlertMatcher.hpp"
 #include "Network/NetworkAccessManager.hpp"
 #include "Network/NetworkMessage.hpp"
 #include "UDPExamples/MessageServer.hpp"
@@ -14625,15 +14626,8 @@ bool MainWindow::callsignFiltered(DecodedText dt)
               }
 
               // Custom alerts
-              bool customAlert = false;
               QStringList customAlerts = ui->le_CustomAlerts->text().split(",",SkipEmptyParts);
-
-              for ( const auto& i : customAlerts  ) {
-                  if (dxCall.contains(i.toUpper())) {
-                      customAlert = true;
-                      break;
-                  }
-              }
+              bool const customAlert = CustomAlertMatcher::matches (dxCall, customAlerts);
 
 
               if (customAlert ||

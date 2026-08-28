@@ -36,3 +36,10 @@ add_executable (test_lotw_confirmation
   )
 target_link_libraries (test_lotw_confirmation Qt5::Core Qt5::Test)
 add_test (test_lotw_confirmation test_lotw_confirmation)
+
+add_executable (test_custom_alert_matcher
+  test_custom_alert_matcher.cpp
+  ../widgets/CustomAlertMatcher.cpp
+  )
+target_link_libraries (test_custom_alert_matcher Qt5::Core Qt5::Test)
+add_test (test_custom_alert_matcher test_custom_alert_matcher)
