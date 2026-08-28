@@ -7,6 +7,7 @@ V2.0.19
 - Auto Call Next (pounce) is now automatically unchecked when Auto-Call or Auto-CQ is enabled, completing the mutual exclusion that already existed in the other direction (PR #147, SpudGunMan).
 - MSK144: T/R period is now remembered per band group (HF, 6m/4m, 2m) consistently across mode entry, band changes, and the settings save path; Ftol default raised to 100 Hz; duplicate Fortran source entry removed from the build (PR #154, SpudGunMan).
 - Settings: Pwr column layout constraint restored to the Qt default (PR #146, SpudGunMan).
+- Ignore tab: Add Station now clears the current DX target so Auto-Call can select another station on its next cycle.
 
 [features]
 - Callsign lookup can now download maintained terrestrial or EME CALL3.TXT databases from Settings → Reporting, providing six-character grid locators where available. Updates are validated and atomically backed up before replacing the installed database.
