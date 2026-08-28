@@ -14211,9 +14211,9 @@ void MainWindow::on_cbAutoCQ_toggled(bool b)
 }
 
 // Adds the active DX station to the session ignore list and abandons the
-// current QSO target. Clearing the cached priority candidate, even when the
-// station was already ignored, prevents AutoCall from immediately selecting
-// the same station before processing another cycle of decodes.
+// current QSO target. AutoCall transmission is stopped because clearDX()
+// selects Tx6/CQ; leaving transmission enabled would send CQ before the next
+// decode cycle can supply a replacement candidate.
 void MainWindow::on_btn_addToIgnore_clicked( ) {
     auto const candidate = ui->dxCallEntry->text().trimmed().isEmpty ()
                            ? m_hisCall.trimmed ()
@@ -14229,6 +14229,7 @@ void MainWindow::on_btn_addToIgnore_clicked( ) {
 
     clearPounceState();
     clearDX();
+    if (ui->cbAutoCall->isChecked ()) auto_tx_mode(false);
 }
 
 void MainWindow::on_btn_addToPermIgnore_clicked()
