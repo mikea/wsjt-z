@@ -6323,6 +6323,9 @@ void MainWindow::auto_sequence (DecodedText const& message, unsigned start_toler
                         .arg(message_words.at(2)).arg(message_words.at(3)).arg(ui->dxCallEntry->text()));
       // Z
       if (m_zdebug) log("Automatic TX halt");
+      // This cycle was spent waiting for the selected station, not idling with
+      // nobody to call. Disarm the counter before clearDX() restores CALLING.
+      m_autoCallIdleCycleArmed = false;
       ui->stopTxButton->click (); // halt any transmission
       LOG_INFO("STOPPED!");
       if (ui->cbAutoCQ->isChecked() || ui->cbAutoCall->isChecked()) clearDX();
@@ -9289,7 +9292,7 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
   // Z
   const auto nowUtc = QDateTime::currentDateTimeUtc();
   updateQsoCounter(true);
-  m_preserveAutoCallCountAfterQso = ui->cbAutoCall->isChecked ();
+  m_autoCallIdleCycleArmed = false;
   m_dxMapLastLogUtc = nowUtc;
   if (m_dxStationMap) {
     m_dxStationMap->setTickerStats(qso_total, qso_new, m_dxMapStartedUtc, m_dxMapLastLogUtc, 0.0);
@@ -14148,9 +14151,9 @@ void MainWindow::sfox_tx() {
 
 void MainWindow::on_cbAutoCall_toggled(bool b)
 {
-    if (!b) {
-        m_preserveAutoCallCountAfterQso = false;
-    }
+    // The first boundary after a mode change is only a partial cycle and must
+    // not consume an AutoCall count.
+    m_autoCallIdleCycleArmed = false;
     if (b) {
         ui->cb_autoCallNext->setChecked(false);
         ui->cbCQonly->setChecked(true);
@@ -15713,9 +15716,13 @@ void MainWindow::ZProcess ()
     if (m_zdebug) log("ZProcess: m_hiscall: " + m_hisCall);
     if (m_zdebug) log("ZProcess: m_lastcall: " + m_lastCall);
 
-    if (!ui->autoButton->isChecked() && (ui->cbAutoCall->isChecked() || ui->cb_autoCallNext->isChecked())
+    bool const auto_call_candidate_ready = !ui->autoButton->isChecked()
+            && (ui->cbAutoCall->isChecked() || ui->cb_autoCallNext->isChecked())
             && !m_priorityCall.isNull() && !m_priorityCall.isEmpty()
-            && m_lastCall != m_priorityCall && (ui->dxCallEntry->text().isEmpty() || ui->dxCallEntry->text() == m_priorityCall)) {
+            && m_lastCall != m_priorityCall
+            && (ui->dxCallEntry->text().isEmpty() || ui->dxCallEntry->text() == m_priorityCall);
+    if (auto_call_candidate_ready) {
+        m_autoCallIdleCycleArmed = false;
         tx_watchdog(false);
         if (m_zdebug) log("Next call: " + m_priorityCall);
         m_nextCall = m_priorityCall;
@@ -15743,10 +15750,7 @@ void MainWindow::ZProcess ()
         if (ui->cbAutoCall->isChecked() || ui->cbAutoCQ->isChecked()) {
 
                 if (ui->cbAutoCall->isChecked()) {
-                    if (m_preserveAutoCallCountAfterQso) {
-                        m_preserveAutoCallCountAfterQso = false;
-                        if (m_zdebug) log("ZProcess: Preserving AutoCall count after logged QSO");
-                    } else {
+                    if (m_autoCallIdleCycleArmed && !auto_call_candidate_ready) {
                         int l = ui->le_autoCallLeft->text().toInt();
                         if (l > 1){
                             ui->le_autoCallLeft->setText(QString::number(l-1));
@@ -15795,6 +15799,8 @@ void MainWindow::ZProcess ()
                             toggleBands();
                             }
                         }
+                    } else if (m_zdebug) {
+                        log("ZProcess: AutoCall count unchanged; no complete idle cycle");
                     }
                 } else if (ui->cbAutoCQ->isChecked()) {
                   if (m_autoTXFreq) {
@@ -15840,6 +15846,8 @@ void MainWindow::ZProcess ()
     m_maxSignal = -30;
     clearPounceState();
     m_beeped = false;
+    m_autoCallIdleCycleArmed = ui->cbAutoCall->isChecked()
+            && m_QSOProgress == CALLING && !auto_call_candidate_ready;
     if (m_zdebug) log("ZProcess: EXIT");
 }
 

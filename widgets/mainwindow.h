@@ -776,10 +776,10 @@ private:
   bool    m_infoMessageShown = false;
   bool    m_autoModeSwitch = false;
   bool    m_smartModeSwitch = false;
-  // Preserves a freshly reset AutoCall cycle through its first idle boundary
-  // after an accepted QSO. Without this guard, clearDX() leaves the state as
-  // CALLING and ZProcess() immediately consumes one count.
-  bool    m_preserveAutoCallCountAfterQso = false;
+  // Armed at a boundary that begins with AutoCall idle and no eligible
+  // candidate. Calls and completed QSOs disarm it so only a subsequent fully
+  // idle boundary may consume an AutoCall count.
+  bool    m_autoCallIdleCycleArmed = false;
   bool    m_autoCQAlternateEvenOddNext = false;
   QScopedPointer<UnfilteredView> m_unfilteredView;
   QScopedPointer<PSKReporterWidget> m_pskReporterView;

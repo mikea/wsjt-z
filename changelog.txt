@@ -1,6 +1,7 @@
 == Changelog
 V2.0.19
 [fixes]
+- Auto-Call now decrements its remaining-cycle counter only after a complete idle cycle with no eligible station. Calling a station that answers someone else triggers QRM protection without consuming a cycle.
 - LogQSO dialog no longer hangs/ghosts on the first QSO with Auto-CQ/Auto-Call active; the first contact logs correctly with the callsign preserved through the signal/slot timing race, and retries remain blocked by the early-return check (PR #125, SpudGunMan).
 - Signal meter no longer changes width with the reading: the numeric label reserves enough minimum width for the largest value, so the bar stays put when the reading moves between one and two digits (PR #118, SpudGunMan).
 - Erase button right-click and triple-click now behave identically, both routing through the full QSO-state clear (clearDX). This also fixes a stale last-callsign bug in the erase paths. Note: in FT8 Hound mode, erasing now selects Tx1 instead of Tx6 (PR #137, SpudGunMan).
