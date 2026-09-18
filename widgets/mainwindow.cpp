@@ -16236,6 +16236,7 @@ void MainWindow::on_pb_ModeChangeNow_clicked() {
 }
 
 void MainWindow::on_pb_BandChangeNow_clicked() {
+    resetAutoSwitch();
     toggleBands();
 }
 
